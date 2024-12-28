@@ -3,8 +3,10 @@ package router
 import (
 	"context"
 	"log/slog"
+	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/sanjiv-madhavan/go-jwt-auth/cache"
 	"github.com/sanjiv-madhavan/go-jwt-auth/controllers"
 	"github.com/sanjiv-madhavan/go-jwt-auth/middleware"
 )
@@ -13,7 +15,9 @@ import (
 func CreateMuxRouter(ctx context.Context, logger *slog.Logger) *mux.Router {
 	r := mux.NewRouter().SkipClean(true).UseEncodedPath()
 
-	middleware := middleware.NewMiddleware(logger)
+	redisClient := cache.NewRedisClient(logger)
+
+	middleware := middleware.NewMiddleware(redisClient, logger)
 	controller := controllers.NewController(logger, middleware, ctx)
 
 	r.HandleFunc("/v1/healthz", controller.HealthCheckHandler).Methods("GET")

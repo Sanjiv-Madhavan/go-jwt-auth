@@ -32,6 +32,7 @@ func GenerateAllTokens(email string, firstName string, lastName string, userType
 		UID:       uid,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 

@@ -5,15 +5,19 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"github.com/sanjiv-madhavan/go-jwt-auth/cache"
 )
 
 type Middleware struct {
-	logger slog.Logger
+	logger      slog.Logger
+	redisClient *cache.RedisClient
 }
 
-func NewMiddleware(logger *slog.Logger) *Middleware {
+func NewMiddleware(client *cache.RedisClient, logger *slog.Logger) *Middleware {
 	return &Middleware{
-		logger: slog.Logger{},
+		redisClient: client,
+		logger:      slog.Logger{},
 	}
 }
 

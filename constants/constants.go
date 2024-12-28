@@ -7,4 +7,10 @@ const (
 	Email       = "email"
 	FirstName   = "first_name"
 	LastName    = "last_name"
+	ExpiresAt   = "exp"
+)
+
+const (
+	GlobalInvalidationKey = "global_invalidation"
+	UserInvalidation      = "user_invalidation"
 )

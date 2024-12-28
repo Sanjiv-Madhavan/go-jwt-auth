@@ -13,6 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/sanjiv-madhavan/go-jwt-auth/cache"
 	"github.com/sanjiv-madhavan/go-jwt-auth/constants"
 	"github.com/sanjiv-madhavan/go-jwt-auth/database"
 	"github.com/sanjiv-madhavan/go-jwt-auth/models"
@@ -139,7 +140,10 @@ func (c *Controller) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// To Delete - Add token invalidation logic
+	// To Delete - Creation of redis client - make it singleton
+	redisClient := cache.NewRedisClient(c.logger)
+	ttl := r.Context().Value(constants.ExpiresAt).(int64)
+	cache.SetUserSpecificInvalidation(r.Context(), redisClient, userID, time.Now().Unix(), ttl)
 
 	c.logger.Info("Password updated successfully")
 	c.middleware.SendJSONResponse(w, http.StatusOK, "Password updated successfully")

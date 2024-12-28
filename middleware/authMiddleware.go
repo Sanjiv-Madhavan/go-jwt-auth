@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sanjiv-madhavan/go-jwt-auth/cache"
 	"github.com/sanjiv-madhavan/go-jwt-auth/constants"
 	"github.com/sanjiv-madhavan/go-jwt-auth/env"
 	"github.com/sanjiv-madhavan/go-jwt-auth/utils"
@@ -57,11 +58,37 @@ func (m *Middleware) CreateAuthContext(inner http.Handler) http.Handler {
 			m.SendJSONResponse(w, http.StatusUnauthorized, "Auth token invalid")
 			return
 		}
+
+		globalInvalidationTimestamp, err := cache.GetGlobalInvalidation(r.Context(), m.redisClient)
+		if err != nil {
+			m.logger.Error("Failed to retrieve global invalidation", slog.Any("Err:", err))
+			m.SendJSONResponse(w, http.StatusUnauthorized, "Failed to retrieve global invalidation")
+			return
+		}
+		if globalInvalidationTimestamp > 0 && claims.IssuedAt.Unix() < globalInvalidationTimestamp {
+			m.logger.Error("Auth token Expired", slog.Any("Err:", err))
+			m.SendJSONResponse(w, http.StatusUnauthorized, "Auth Token Expired")
+			return
+		}
+
+		userInvalidation, err := cache.GetUserSpecificInvalidation(r.Context(), m.redisClient, claims.UID)
+		if err != nil {
+			m.logger.Error(fmt.Sprintf("Faied to retrieve token invalidation for User: %s", claims.UID), slog.Any("Err:", err))
+			m.SendJSONResponse(w, http.StatusUnauthorized, fmt.Sprintf("Faied to retrieve token invalidation for User: %s", claims.UID))
+			return
+		}
+		if userInvalidation > 0 && claims.IssuedAt.Unix() < userInvalidation {
+			m.logger.Error(fmt.Sprintf("Auth token Expired for user: %s", claims.UID), slog.Any("Err:", err))
+			m.SendJSONResponse(w, http.StatusUnauthorized, fmt.Sprintf("Auth token Expired for user: %s", claims.UID))
+			return
+		}
+
 		ctx := context.WithValue(r.Context(), constants.Email, claims.Email)
 		ctx = context.WithValue(ctx, constants.FirstName, claims.FirstName)
 		ctx = context.WithValue(ctx, constants.LastName, claims.LastName)
 		ctx = context.WithValue(ctx, constants.UID, claims.UID)
 		ctx = context.WithValue(ctx, constants.UserType, claims.UserType)
+		ctx = context.WithValue(ctx, constants.ExpiresAt, claims.RegisteredClaims.ExpiresAt.Unix())
 		r = r.WithContext(ctx)
 		inner.ServeHTTP(w, r)
 	}
